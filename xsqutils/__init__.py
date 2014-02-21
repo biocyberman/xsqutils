@@ -4,8 +4,9 @@ import re
 
 import tables
 
-Tag = collections.namedtuple('Tag', 'tag is_colorspace prefix')
 
+Tag = collections.namedtuple('Tag', 'tag is_colorspace prefix')
+FAILED_BASE_SCORE = 63
 
 def natural_sort(ar):
     to_sort = []
@@ -56,7 +57,7 @@ class XSQFile(object):
         self._samples = []
 
         for sample, node in node_children_iter(self.hdf.root):
-            if sample not in  ['RunMetadata', 'Indexing']:
+            if not ("Unclassified" in sample or "Unassigned" in sample or sample in  ['RunMetadata', 'Indexing']):
                 self._samples.append(sample)
 
         self._samples = natural_sort(self._samples)
@@ -105,7 +106,11 @@ class XSQFile(object):
         ar.sort()
         return ar
 
-    def fetch_region(self, sample, region_name, tags=None):
+    def __convert_base(self, _b, _bases, _wildcard):
+        qual_raw = _b >> 2
+        call, qual = (_bases[_b & 0x03], chr(qual_raw + 33 )) if qual_raw != 63 else (_wildcard, chr(33))
+        return call, qual
+    def fetch_region_slow(self, sample, region_name, tags=None):
         region_name_int = int(region_name)
         region = self.hdf.root._f_getChild(sample)._f_getChild(region_name)
         if not tags:
@@ -129,7 +134,7 @@ class XSQFile(object):
 
             for (y, x), basequals in zip(locations, region._f_getChild(tag)._f_getChild(k)[:]):
                 name = '%s_%s_%s' % (region_name_int, y, x)
-                if len(tags) > 1:
+                if len(tags) > 1: # Cases of not fragment sequencing
                     name = name + ' %s' % (tag)
 
                 calls = []
@@ -145,11 +150,47 @@ class XSQFile(object):
                         call = wildcard
                         qual = 0
 
+                    qual = chr(qual + 33) # Is there any problem passing special characters around?
+
                     calls.append(call)
                     quals.append(qual)
-
-                vals[tag].append((name, ''.join(calls), quals))
+                #calls, quals = zip(*[self.__convert_base(byte, bases,wildcard) for byte in basequals])
+                vals[tag].append((name, ''.join(calls), ''.join(quals)))
                 #yield (name, ''.join(calls), quals)
+
+        for i in xrange(len(locations)):
+            for tag in tags:
+                yield(vals[tag][i])
+
+    def fetch_region(self, sample, region_name, tags=None):
+        region_name_int = int(region_name)
+        region = self.hdf.root._f_getChild(sample)._f_getChild(region_name)
+        if not tags:
+            tags = self.tags
+
+        locations = [(y, x) for y, x in region._f_getChild('Fragments')._f_getChild('yxLocation') ]
+
+        vals = {}
+        for tag in tags:
+            vals[tag] = []
+            seq_prefix = self.tags[tag].prefix if self.tags[tag].prefix else ''
+            seq_tag = tag if len(tags) > 1 else ''
+            if self.tags[tag].is_colorspace:
+                k = 'ColorCallQV'
+                bases = '0123'
+                wildcard = '.'
+            else:
+                k = 'BaseCallQV'
+                bases = 'ACGT'
+                wildcard = 'N'
+            BaseCallQV_array = region._f_getChild(tag)._f_getChild(k)[:]
+            #print "BaseCall: %s" % type(BaseCallQV_array)
+            for (y, x), basequals in zip(locations, BaseCallQV_array):
+                name = '%s_%s_%s%s' % (region_name_int, y, x, seq_tag)
+                calls, quals = zip(*[self.__convert_base(byte, bases, wildcard) for byte in basequals])
+                #calls = seq_prefix + calls
+                #print "Calls: %s"%''.join(calls)
+                vals[tag].append((name, seq_prefix + ''.join(calls), ''.join(quals)))
 
         for i in xrange(len(locations)):
             for tag in tags:

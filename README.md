@@ -3,13 +3,14 @@ xsqutils
 
 Converts XSQ format files to FASTQ format files.
 
-Requires the [pytables](http://pytables.org/) library and HDF5-devel libraries to be installed.
-(Note: pytables also requires numpy, numexpr, and cython)
+Reuires anaconda to be installed and searchable in PATH. After doing `git clone https://github.com/biocyberman/xsqutils.git`, do `cd xsquitils && ./setup.sh`. Follow instructions fromt there
+Requires the [pytables](http://pytables.org/) library. If you prefer to use pip, this will require HDF5-devel and cython libraries to be installed.
 
 HDF5 libraries can be downloaded from [http://www.hdfgroup.org/HDF5/](http://www.hdfgroup.org/HDF5/). 
 They can also be found in the EPEL yum repository. Pytables requires HDF5 1.6.10 or better.
 
-The installation script `install.sh` will take care of setting up a virtualenv environment and installing Pytables and it's dependencies. The virtualenv will be setup in the 'env' directory. The default `xsq` driver script expects this setup and will automatically setup the virtualenv accordingly.
+By default: The installation script `setup.sh` will copy the package to `<ANACONDA_ROOT/envs/xsqutils_env/xsqutils` and the executable will be linked to ANACONDA_ROOT/envs/xsqutils_env/bin.
+In the alternative setup, which uses setup a virtualenv environment and installing Pytables and its dependencies. The virtualenv will be setup in the 'xsqutils_env' directory. The default `xsq` driver script expects this setup and will automatically setup the virtualenv accordingly.
 
 When converting a sample or entire file, multiple processors can be used to speed the conversion.
 

@@ -2,14 +2,15 @@
 
 REAL=`python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "$0"`
 DIR=`dirname "$REAL"`
+XSQUTILS_DIR="$(dirname ${DIR})"
 
-if [ -e $DIR/env/bin/activate ]; then
+if [ -e $XSQUTILS_DIR/bin/activate ]; then
     source $DIR/env/bin/activate
 fi
 
-if [ -e $DIR/env/hdf5/lib ]; then
-    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$DIR/env/hdf5/lib
-    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$DIR/env/hdf5/lib
+if [ -e $XSQUTILS_DIR/lib ]; then
+    export DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH:$XSQUTILS_DIR/lib
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$XSQUTILS_DIR/lib
 fi
 
 export PYTHONPATH="$DIR"

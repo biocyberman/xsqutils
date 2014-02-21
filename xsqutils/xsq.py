@@ -11,6 +11,7 @@ import shutil
 
 from xsqutils import XSQFile
 
+
 try:
     from eta import ETA
 except:
@@ -75,15 +76,13 @@ def xsq_info(filename):
     xsq.close()
 
 
-def _xsq_convert_region(filename, sample, region, tags, outname):
+def _xsq_convert_region(filename, sample, region, tags, outname, suffix=''):
     out = gzip.open(outname, 'w')
     xsq = XSQFile(filename)
 
-    for name, seq, quals in xsq.fetch_region(sample, region, tags):
-        if suffix:
-            out.write('@%s%s\n%s\n+\n%s\n' % (name, suffix, seq, ''.join([chr(q + 33) for q in quals])))
-        else:
-            out.write('@%s\n%s\n+\n%s\n' % (name, seq, ''.join([chr(q + 33) for q in quals])))
+    for name, seq, qual in xsq.fetch_region(sample, region, tags):
+            out.write('@%s\n%s\n+\n%s\n' % (name, seq, qual))
+            #TODO: Needs improvement on writing out, and eleminate the join operation.
     xsq.close()
     out.close()
     return region
@@ -111,7 +110,7 @@ class Callback(object):
 
 
 #  TODO: Make this multi-process - add job queue? Or just workers?
-def xsq_convert(filename, sample=None, tags=None, suffix=None, procs=1, outname='-', tmpdir=None, noz=False):
+def xsq_convert(filename, sample=None, tags=None, suffix='', procs=1, outname='-', tmpdir=None, noz=False):
     sys.stderr.write("Converting: %s\n" % sample)
     if tmpdir is None:
         tmpdir = '.'
@@ -134,7 +133,7 @@ def xsq_convert(filename, sample=None, tags=None, suffix=None, procs=1, outname=
         callback = None
 
     for region, tmpname in zip(regions, tmpnames):
-        pool.apply_async(_xsq_convert_region, (filename, sample, region, tags, tmpname), callback=callback)
+        pool.apply_async(_xsq_convert_region, (filename, sample, region, tags, tmpname, suffix), callback=callback)
 
     pool.close()
     try:
@@ -177,7 +176,7 @@ def xsq_convert(filename, sample=None, tags=None, suffix=None, procs=1, outname=
         callback.done()
 
 
-def xsq_convert_all(filename, tags=None, force=False, suffix=None, noz=False, usedesc=False, minreads=0, fsuffix=None, unclassified=False, procs=1, tmpdir=None):
+def xsq_convert_all(filename, tags=None, force=False, suffix='', noz=False, usedesc=False, minreads=0, fsuffix=None, unclassified=False, procs=1, tmpdir=None):
     xsq = XSQFile(filename)
 
     samples = []
